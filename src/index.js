@@ -18,29 +18,42 @@ import summaryRoutes from './routes/summary.js';
 
 const app = express();
 
-// ── 1. Allowed origins ────────────────────────────────────────
+// ── 1. Allowed origins (normalize — no trailing slashes) ───────
+const normalizeOrigin = (origin) => origin?.replace(/\/$/, '') || '';
+
 const allowedOrigins = [
-  "http://localhost:3000",
-  "http://localhost:3001",
-  "http://localhost:3002",
-  "https://azm-f.vercel.app/",
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:3002',
+  'https://azm-f.vercel.app',
   process.env.CLIENT_URL,
-].filter(Boolean);
+]
+  .filter(Boolean)
+  .map(normalizeOrigin);
+
+const isAllowedOrigin = (origin) => {
+  const normalized = normalizeOrigin(origin);
+  if (!normalized) return true;
+  if (allowedOrigins.includes(normalized)) return true;
+  if (/^https:\/\/[\w-]+\.vercel\.app$/i.test(normalized)) return true;
+  if (/^http:\/\/localhost:\d+$/.test(normalized)) return true;
+  return false;
+};
 
 // ── 2. CORS — must be first ───────────────────────────────────
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
+      if (!origin || isAllowedOrigin(origin)) {
         callback(null, true);
       } else {
-        callback(new Error(`CORS blocked: ${origin}`));
+        console.warn(`CORS blocked: ${origin}`);
+        callback(null, false);
       }
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 
